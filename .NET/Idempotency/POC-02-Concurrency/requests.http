@@ -1,0 +1,38 @@
+@baseUrl = http://localhost:5000
+
+### 1. Cria um pedido (201, replay false)
+POST {{baseUrl}}/orders
+Content-Type: application/json
+Idempotency-Key: compra-abc
+
+{"productId":123,"quantity":2}
+
+### 2. Repete: mesmo ID e replay true
+POST {{baseUrl}}/orders
+Content-Type: application/json
+Idempotency-Key: compra-abc
+
+{"productId":123,"quantity":2}
+
+### 3. Mesma chave, outro corpo: 409
+POST {{baseUrl}}/orders
+Content-Type: application/json
+Idempotency-Key: compra-abc
+
+{"productId":123,"quantity":3}
+
+### 4. Nova intenção: novo pedido, mesmo produto
+POST {{baseUrl}}/orders
+Content-Type: application/json
+Idempotency-Key: compra-xyz
+
+{"productId":123,"quantity":2}
+
+### 5. Sem chave: 400
+POST {{baseUrl}}/orders
+Content-Type: application/json
+
+{"productId":123,"quantity":2}
+
+### 6. Após executar 1 a 5 uma vez, deve haver dois pedidos
+GET {{baseUrl}}/orders
