@@ -6,5 +6,8 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Remove="Verification/**/*.cs" />
+    <Compile Remove="Tests/**/*.cs" />
+    <Content Remove="Tests/**;Verification/**" />
+    <None Remove="Tests/**;Verification/**" />
   </ItemGroup>
 </Project>

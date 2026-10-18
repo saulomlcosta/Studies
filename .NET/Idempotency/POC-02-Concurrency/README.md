@@ -6,6 +6,8 @@ Evoluir a POC 1 para que requisições simultâneas com a mesma chave não execu
 
 ## O que mudou e por quê
 
+Leia a [explicação técnica detalhada](./docs/explicacao-tecnica.md) para acompanhar o fluxo, os recursos do .NET e as decisões de coordenação.
+
 - `KeyedRequestLock` é singleton e associa cada chave interna a um `SemaphoreSlim(1, 1)`: uma execução por vez para aquela chave, sem bloqueio global entre chaves distintas.
 - `WaitAsync(RequestAborted)` aguarda de forma assíncrona e permite cancelar a espera quando o cliente desconecta. Não usamos `lock` porque a região contém operações assíncronas.
 - A consulta ao cache fica **dentro** da região protegida. Depois de esperar, a requisição encontra o resultado que a anterior salvou. Não há consulta inicial fora da região nesta versão.
@@ -40,6 +42,8 @@ Em outro terminal, na mesma pasta:
 
 Resultado esperado: `Requests = 20`, `DistinctOrderIds = 1`, `Replays = 19`. Cada execução do script gera uma chave nova para não reutilizar resultados de um experimento anterior. O script envia todas as chamadas antes de aguardar suas respostas e falha se o resultado divergir.
 
+O script também confirma os IDs retornados em `GET /orders` e exibe `OrdersFoundInStore`. A contagem considera apenas os IDs da rodada atual. Para comparar com chamadas sequenciais, execute `.\Experiment.ps1 -Sequential`. O parâmetro `-Requests` aceita de 2 a 200 chamadas; `-Sequential` e `-ExpectDuplicates` são mutuamente exclusivos.
+
 Para observar todos os pedidos:
 
 ```powershell
@@ -64,7 +68,21 @@ No outro terminal:
 
 Esperamos mais de um ID para a mesma chave. A quantidade exata depende do agendamento das requisições; o atraso amplia a janela, mas não é uma barreira determinística. Se não observar a corrida, aumente o atraso e repita. Reinicie sem a opção `false` para restaurar a proteção.
 
-## Verificação automatizada sem sockets
+## Testes automatizados com xUnit
+
+Na pasta da POC 2, sem iniciar a API:
+
+```powershell
+dotnet test ./Tests/Idempotency.Poc02.Tests.csproj -c Release
+dotnet test ./Tests/Idempotency.Poc02.Tests.csproj -c Release --filter "Category=Concurrency"
+dotnet test ./Tests/Idempotency.Poc02.Tests.csproj -c Release --filter "Category=Unit"
+```
+
+A suíte inclui testes unitários do coordenador e integração entre componentes para o contrato HTTP, concorrência, conflitos, cancelamento e recuperação após falha antes do efeito. Consulte o [guia dos testes](./Tests/README.md). O teste sem proteção passa ao caracterizar a duplicação; com proteção espera um pedido e dezenove replays.
+
+## Verificação didática inicial sem sockets
+
+O executável abaixo foi preservado como demonstração inicial. A suíte xUnit é a referência para regressões e possui cobertura mais ampla.
 
 ```powershell
 dotnet run --project Verification/Verification.csproj

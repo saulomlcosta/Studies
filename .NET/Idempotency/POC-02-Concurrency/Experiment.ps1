@@ -1,11 +1,14 @@
-﻿param(
+﻿# Compatível com Windows PowerShell 5.1 e PowerShell 7. Por padrão, espera uma execução e N-1 replays.
+param(
     [string]$BaseUrl = 'http://localhost:5102',
     [int]$Requests = 20,
+    [switch]$Sequential,
     [switch]$ExpectDuplicates
 )
 
 $ErrorActionPreference = 'Stop'
-if ($Requests -lt 2) { throw 'Use pelo menos duas requisições.' }
+if ($Sequential -and $ExpectDuplicates) { throw 'Use Sequential ou ExpectDuplicates, não ambos.' }
+if ($Requests -lt 2 -or $Requests -gt 200) { throw 'Use entre 2 e 200 requisições.' }
 $key = [Guid]::NewGuid().ToString()
 Add-Type -AssemblyName System.Net.Http
 $handler = [System.Net.Http.HttpClientHandler]::new()
@@ -14,13 +17,15 @@ $client = [System.Net.Http.HttpClient]::new($handler)
 $messages = @()
 $responses = @()
 try {
-    # Envia todas antes de aguardar os resultados: não é um loop sequencial de HTTP.
     $tasks = @(for ($i = 0; $i -lt $Requests; $i++) {
         $message = [System.Net.Http.HttpRequestMessage]::new([System.Net.Http.HttpMethod]::Post, "$BaseUrl/orders")
         $message.Headers.Add('Idempotency-Key', $key)
         $message.Content = [System.Net.Http.StringContent]::new('{"productId":123,"quantity":2}', [System.Text.Encoding]::UTF8, 'application/json')
         $messages += $message
-        $client.SendAsync($message)
+        $task = $client.SendAsync($message)
+        if ($Sequential) { $null = $task.GetAwaiter().GetResult() }
+        # No modo concorrente, todas são enviadas antes de aguardar as respostas.
+        $task
     })
     $ids = @()
     $replays = 0
@@ -32,15 +37,29 @@ try {
         $ids += $body.id
         if (($response.Headers.GetValues('Idempotency-Replayed') | Select-Object -First 1) -eq 'true') { $replays++ }
     }
-    $unique = @($ids | Sort-Object -Unique).Count
-    [pscustomobject]@{ Requests = $Requests; DistinctOrderIds = $unique; Replays = $replays; Key = $key }
-    if ($ExpectDuplicates) {
-        if ($unique -lt 2) { throw 'Corrida não observada. Aumente Experiment:DelayMilliseconds e tente novamente.' }
-    } elseif ($unique -ne 1 -or $replays -ne ($Requests - 1)) {
-        throw 'Falha: esperávamos um pedido e N-1 replays.'
+    $uniqueIds = @($ids | Sort-Object -Unique)
+    $ordersJson = $client.GetStringAsync("$BaseUrl/orders").GetAwaiter().GetResult()
+    $orders = ConvertFrom-Json -InputObject $ordersJson
+    $persisted = @($orders | Where-Object { $_.id -in $uniqueIds }).Count
+    [pscustomobject]@{
+        Mode = $(if ($Sequential) { 'Sequential' } else { 'Concurrent' })
+        Requests = $Requests
+        DistinctOrderIds = $uniqueIds.Count
+        OrdersFoundInStore = $persisted
+        Replays = $replays
+        Key = $key
+        OrderIds = $uniqueIds -join ', '
+    }
+    if ($persisted -ne $uniqueIds.Count) { throw 'Nem todos os IDs retornados foram encontrados em GET /orders.' }
+    if (!$ExpectDuplicates) {
+        if ($uniqueIds.Count -ne 1 -or $replays -ne ($Requests - 1)) {
+            throw 'Esperávamos um pedido e N-1 replays com a proteção ativa ou em chamadas sequenciais.'
+        }
+    } elseif ($uniqueIds.Count -lt 2) {
+        throw 'Corrida não observada. Reinicie a API com --Idempotency:CoordinationEnabled=false --Experiment:DelayMilliseconds=2000 e repita. O atraso amplia a janela, mas não garante o agendamento.'
     }
 } finally {
+    $client.Dispose()
     foreach ($response in $responses) { $response.Dispose() }
     foreach ($message in $messages) { $message.Dispose() }
-    $client.Dispose()
 }
