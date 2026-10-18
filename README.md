@@ -22,8 +22,13 @@ Studies/
 │       ├── POC-01-Memory/
 │       │   ├── docs/
 │       │   └── Tests/
-│       └── POC-02-Concurrency/
-│           └── Verification/
+│       ├── POC-02-Concurrency/
+│       │   ├── docs/
+│       │   ├── Tests/
+│       │   └── Verification/
+│       └── POC-03-MultipleInstances/
+│           ├── docs/
+│           └── Tests/
 └── CSharp/
     └── DesignPatterns/
         ├── Creational/FactoryMethod/
@@ -44,11 +49,14 @@ dotnet run --project ./CSharp/DesignPatterns/Behavioral/Strategy/Strategy.csproj
 # Testes da POC 1 de idempotência
 dotnet test ./.NET/Idempotency/POC-01-Memory/Tests/Idempotency.Poc01.Tests.csproj -c Release
 
-# Verificação em processo da POC 2
-dotnet run --project ./.NET/Idempotency/POC-02-Concurrency/Verification/Verification.csproj
+# Testes da POC 2 de idempotência
+dotnet test ./.NET/Idempotency/POC-02-Concurrency/Tests/Idempotency.Poc02.Tests.csproj -c Release
+
+# Testes de integração da POC 3
+dotnet test ./.NET/Idempotency/POC-03-MultipleInstances/Tests/Idempotency.Poc03.Tests.csproj -c Release
 ```
 
-Para iniciar as APIs e realizar experimentos HTTP, consulte os READMEs de [POC 1](./.NET/Idempotency/POC-01-Memory/README.md) e [POC 2](./.NET/Idempotency/POC-02-Concurrency/README.md).
+Para iniciar as APIs e realizar experimentos HTTP, consulte os READMEs de [POC 1](./.NET/Idempotency/POC-01-Memory/README.md), [POC 2](./.NET/Idempotency/POC-02-Concurrency/README.md) e [POC 3](./.NET/Idempotency/POC-03-MultipleInstances/README.md).
 
 ## Organização dos estudos
 

@@ -1,0 +1,45 @@
+@a = http://localhost:5103
+@b = http://localhost:5104
+
+### Identificar A
+GET {{a}}/instance
+
+### Identificar B
+GET {{b}}/instance
+
+### 1. Primeira execucao em A: 201, replay false
+POST {{a}}/orders
+Content-Type: application/json
+Idempotency-Key: purchase-multi
+
+{"productId":123,"quantity":2}
+
+### 2. Repetir em A: replay true
+POST {{a}}/orders
+Content-Type: application/json
+Idempotency-Key: purchase-multi
+
+{"productId":123,"quantity":2}
+
+### 3. Mesma chave e corpo em B: replay false, outra execucao
+POST {{b}}/orders
+Content-Type: application/json
+Idempotency-Key: purchase-multi
+
+{"productId":123,"quantity":2}
+
+### 4. Repetir em B: replay true
+POST {{b}}/orders
+Content-Type: application/json
+Idempotency-Key: purchase-multi
+
+{"productId":123,"quantity":2}
+
+### Pedidos locais de A
+GET {{a}}/orders
+
+### Pedidos locais de B
+GET {{b}}/orders
+
+### Apos reiniciar apenas A, repetir bloco 1: replay false e novo X-Instance-Run-Id.
+### Repetir bloco 4 em B: replay true e mesmo X-Instance-Run-Id, antes da expiracao.

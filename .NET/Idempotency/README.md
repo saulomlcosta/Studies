@@ -8,7 +8,7 @@ Laboratório incremental em ASP.NET Core / .NET 10. Cada POC terá sua própria 
 | --- | --- | --- |
 | [POC 1](./POC-01-Memory/README.md) | Chave e resposta em memória; repetição sequencial | Implementada |
 | [POC 2 — Concorrência local](./POC-02-Concurrency/README.md) | Reproduzir a corrida e coordenar execuções por chave | Implementada |
-| POC 3 — Múltiplas instâncias | Mostrar por que memória e locks locais não coordenam dois processos | Planejada |
+| [POC 3 — Múltiplas instâncias](./POC-03-MultipleInstances/README.md) | Mostrar por que memória e locks locais não coordenam dois processos | Implementada |
 | POC 4 — Banco compartilhado | Constraint única e transação envolvendo chave, pedido e resultado | Planejada |
 | POC 5 — Falhas e recuperação | Reinícios, falha após commit, retenção e resultado desconhecido | Planejada |
 | POC 6 — Observabilidade | Contar requisições, execuções, replays, conflitos e falhas; medir latência e espera | Planejada |
